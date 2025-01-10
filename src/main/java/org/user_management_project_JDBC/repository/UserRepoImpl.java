@@ -1,14 +1,24 @@
 package org.user_management_project_JDBC.repository;
 
 import org.user_management_project_JDBC.model.User;
+import org.user_management_project_JDBC.util.DataBaseConnector;
 
+import javax.swing.*;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.user_management_project_JDBC.util.DataBaseConnector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class UserRepoImpl implements Repository<User> {
+
+    private static final String SELECT_ALL_USERS = "SELECT * FROM users";
+    private static final String SELECT_USER_BY_ID = "SELECT * FROM users WHERE id = ?";
+    private static final String UPDATE_USER = "UPDATE users SET username=?, password=?, email=? WHERE id=?";
+    private static final String INSERT_USER = "INSERT INTO users(username, password, email) VALUES(?, ?, ?)";
+    private static final String DELETE_USER = "DELETE FROM users WHERE id = ?";
+
+    private static final Logger LOGGER = Logger.getLogger(UserRepoImpl.class.getName());
 
     private final Connection getConnection() throws SQLException {
         return DataBaseConnector.getInstance();
@@ -17,16 +27,13 @@ public class UserRepoImpl implements Repository<User> {
     @Override
     public List<User> list() {
         List<User> users = new ArrayList<>();
-        String query = "SELECT * FROM users";
-
         try (Statement stmt = getConnection().createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
+             ResultSet rs = stmt.executeQuery(SELECT_ALL_USERS)) {
             while (rs.next()) {
-                User user = CreateUser(rs);
-                users.add(user);
+                users.add(mapResultSetToUser(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error listing users", e);
         }
         return users;
     }
@@ -34,28 +41,28 @@ public class UserRepoImpl implements Repository<User> {
     @Override
     public User perId(Integer id) {
         User user = null;
-        String query = "SELECT * FROM users WHERE id = ?";
-
-        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(SELECT_USER_BY_ID)) {
             stmt.setInt(1, id);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    user = CreateUser(rs);
+                    user = mapResultSetToUser(rs);
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
-    }
+            LOGGER.log(Level.SEVERE, "Error fetching user by ID", e);
+        }
         return user;
     }
 
     @Override
     public void save(User user) {
-        String sql;
+        String sql = (user.getId() != null && user.getId() > 0) ? UPDATE_USER : INSERT_USER;
+
         if (user.getId() != null && user.getId() > 0) {
-            sql = "UPDATE users SET username=?, password=?, email=? WHERE id=?";
-        } else {
-            sql = "INSERT INTO users(username, password, email) VALUES(?,?,?)";
+            if (perId(user.getId()) == null) {
+                JOptionPane.showMessageDialog(null, "User with ID " + user.getId() + " does not exist.");
+                return;
+            }
         }
 
         try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
@@ -69,26 +76,26 @@ public class UserRepoImpl implements Repository<User> {
 
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error saving user", e);
         }
-
     }
 
     @Override
     public void delete(Integer id) {
-        String query = "DELETE FROM users WHERE id = ?";
+        if (perId(id) == null) {
+            JOptionPane.showMessageDialog(null, "User with ID " + id + " does not exist.");
+            return;
+        }
 
-        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(DELETE_USER)) {
             stmt.setInt(1, id);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error deleting user", e);
         }
-
     }
 
-
-    private User CreateUser(ResultSet rs) throws SQLException {
+    private User mapResultSetToUser(ResultSet rs) throws SQLException {
         User user = new User();
         user.setId(rs.getInt("id"));
         user.setUsername(rs.getString("username"));
@@ -96,6 +103,4 @@ public class UserRepoImpl implements Repository<User> {
         user.setEmail(rs.getString("email"));
         return user;
     }
-
-
 }

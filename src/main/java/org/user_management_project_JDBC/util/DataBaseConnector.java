@@ -12,10 +12,10 @@ public class DataBaseConnector {
     private static final String url = "jdbc:mysql://localhost:3306/java_curso?serverTimezone=Europe/Madrid";
 
     // Nombre de usuario para autenticar la conexión con la base de datos.
-    private static final String username = "****";
+    private static final String username = "******";
 
     // Contraseña asociada al usuario especificado para conectarse a la base de datos.
-    private static final String password = "****";
+    private static final String password = "******";
 
     // Objeto de tipo 'Connection' que es parte de la API JDBC de Java que permite realizar
     // operaciones como ejecutar consultas SQL (SELECT, INSERT, UPDATE, etc.), gestionar
